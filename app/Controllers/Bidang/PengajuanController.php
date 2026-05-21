@@ -6,15 +6,8 @@ use App\Controllers\BaseController;
 use App\Models\PengajuanBidangModel;
 use App\Models\PengajuanBidangItemModel;
 use App\Models\HistoriPengajuanModel;
-use App\Models\UserProfileModel;
-
 class PengajuanController extends BaseController
 {
-    private function getProfile()
-    {
-        $profileModel = new UserProfileModel();
-        return $profileModel->where('user_id', auth()->id())->first();
-    }
 
     public function index()
     {
@@ -124,8 +117,8 @@ class PengajuanController extends BaseController
 
         $historiModel = new HistoriPengajuanModel();
         $histories = $historiModel
-            ->select('histori_pengajuan.*, user_profiles.nama_lengkap')
-            ->join('user_profiles', 'user_profiles.user_id = histori_pengajuan.actor_id')
+            ->select('histori_pengajuan.*, users.nama_lengkap')
+            ->join('users', 'users.id = histori_pengajuan.actor_id')
             ->where('pengajuan_type', 'bidang')
             ->where('reference_id', $id)
             ->orderBy('created_at', 'ASC')

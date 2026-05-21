@@ -360,8 +360,156 @@ class TestWorkflow extends BaseCommand
             CLI::write(" - OPD Log: [" . $h['status_awal'] . " -> " . $h['status_akhir'] . "] : " . $h['catatan'], "green");
         }
 
+        // ----------------------------------------------------
+        // 7. PUBLIC REGISTRATION, VERIFICATION FILTER, AND ADMIN REGISTER KADIN
+        // ----------------------------------------------------
+        CLI::write("\n[Step 7] Testing Public Self-Registration, Verification Filter & Admin Kadin Registration...", "blue");
+
+        // 7.1. Public Self-Registration Test
+        CLI::write("Simulating public self-registration for Admin Bidang...", "blue");
+        $uniqId = time() . rand(10, 99);
+        $regUsername = 'bidangtest' . $uniqId;
+        $regEmail = 'bidangtest' . $uniqId . '@vibe.id';
+
+        $postRegister = [
+            'username'     => $regUsername,
+            'email'        => $regEmail,
+            'password'     => 'Password123!',
+            'nama_lengkap' => 'Admin Bidang Test',
+            'nip'          => '1234567890',
+            'role'         => 'admin_bidang',
+            'kd_opd'       => 'DINKES',
+            'kd_bidang'    => 'YANKES',
+        ];
+
+        // Logout current user first to allow registration
+        auth()->logout();
+
+        $this->mockRequest($postRegister, 'register');
+        $registerController = new \App\Controllers\Auth\RegisterController();
+        $registerController->initController(service('request'), service('response'), service('logger'));
+
+        $session->remove('errors');
+        $session->remove('message');
+
+        try {
+            $registerController->registerAction();
+        } catch (\Exception $e) {
+            // startUpAction may fail sending email in CLI context, but user should still be created
+            CLI::write("Note: Registration action threw exception (expected in CLI): " . $e->getMessage(), "yellow");
+        }
+
+        // Check if user is registered
+        $newUser = $usersProvider->findByCredentials(['email' => $regEmail]);
+        if (!$newUser) {
+            CLI::error("FAIL: Self-Registration failed to insert user into database.");
+            CLI::error("Session Errors: " . print_r($session->get('errors'), true));
+            CLI::error("Validation Errors: " . print_r(service('validation')->getErrors(), true));
+            return;
+        }
+
+        CLI::write("SUCCESS: User registered: " . $newUser->username, "green");
+        if ((int)$newUser->active !== 0) {
+            CLI::error("FAIL: Newly registered user active status should be 0, got: " . $newUser->active);
+            return;
+        }
+        if (!$newUser->inGroup('admin_bidang')) {
+            CLI::error("FAIL: User should have group 'admin_bidang'.");
+            return;
+        }
+
+        // 7.2. Verification Filter Interception Test
+        CLI::write("Testing Verification Filter interception on unactivated user...", "blue");
+        
+        // Clear the pending auth state left by startLogin/startUpAction in registerAction
+        auth()->logout();
+        
+        // Delete email activation action identity so login() can proceed
+        // (VerificationFilter checks active=0, not the action identity)
+        $db->table('auth_identities')
+           ->where('user_id', $newUser->id)
+           ->where('type', 'email_activate')
+           ->delete();
+
+        // Login the new user directly (simulates them coming back and logging in with active=0)
+        // Since actions['login'] = null, this will fully log them in (STATE_LOGGED_IN) despite active=0
+        // Note: Session::login() returns void, not a Result object
+        auth('session')->getAuthenticator()->login($newUser);
+
+        // Simulated Request to Dashboard
+        $mockRequestDashboard = new \CodeIgniter\HTTP\IncomingRequest(config('App'), new \CodeIgniter\HTTP\SiteURI(config('App'), 'dashboard'), null, new \CodeIgniter\HTTP\UserAgent());
+        $filter = new \App\Filters\VerificationFilter();
+        
+        $filterResult = $filter->before($mockRequestDashboard);
+        if ($filterResult instanceof \CodeIgniter\HTTP\RedirectResponse) {
+            CLI::write("PASS: Unactivated user intercepted and redirected successfully.", "green");
+        } else {
+            CLI::error("FAIL: Verification Filter failed to intercept unactivated user on dashboard route.");
+            return;
+        }
+
+        // Simulated Request to allowed route (auth/a/show)
+        $mockRequestAllowed = new \CodeIgniter\HTTP\IncomingRequest(config('App'), new \CodeIgniter\HTTP\SiteURI(config('App'), 'auth/a/show'), null, new \CodeIgniter\HTTP\UserAgent());
+        $filterResultAllowed = $filter->before($mockRequestAllowed);
+        if ($filterResultAllowed === null) {
+            CLI::write("PASS: Unactivated user allowed to access auth/a/show without redirection loop.", "green");
+        } else {
+            CLI::error("FAIL: Verification Filter intercepted allowed route 'auth/a/show'.");
+            return;
+        }
+
+        // 7.3. Super Admin registers Kepala DISKOMINFO Test
+        CLI::write("Logging in as Super Admin to test Kepala DISKOMINFO registration...", "blue");
+        auth()->logout();
+        $superadminUser = $usersProvider->findByCredentials(['email' => 'superadmin@vibe.id']);
+        auth()->login($superadminUser);
+        CLI::write("Logged in as " . auth()->user()->username, "green");
+
+        $kadinUsername = 'kadintest' . $uniqId;
+        $kadinEmail = 'kadintest' . $uniqId . '@vibe.id';
+
+        $postKadin = [
+            'username'     => $kadinUsername,
+            'email'        => $kadinEmail,
+            'password'     => 'Password123!',
+            'nama_lengkap' => 'Kepala DISKOMINFO Test',
+            'nip'          => '9876543210',
+        ];
+
+        $this->mockRequest($postKadin, 'admin/register-kadin');
+        $userController = new \App\Controllers\Admin\UserController();
+        $userController->initController(service('request'), service('response'), service('logger'));
+
+        try {
+            $userController->processRegisterKadin();
+        } catch (\Exception $e) {
+            CLI::write("Note: Kadin registration threw exception (expected in CLI): " . $e->getMessage(), "yellow");
+        }
+
+        // Check if Kepala DISKOMINFO user is registered
+        $newKadin = $usersProvider->findByCredentials(['email' => $kadinEmail]);
+        if (!$newKadin) {
+            CLI::error("FAIL: Super Admin failed to register Kepala DISKOMINFO.");
+            return;
+        }
+
+        CLI::write("SUCCESS: Registered new Kepala DISKOMINFO: " . $newKadin->username, "green");
+        if ((int)$newKadin->active !== 0) {
+            CLI::error("FAIL: Kadin user should be inactive initially, got: " . $newKadin->active);
+            return;
+        }
+        if ($newKadin->kd_opd !== 'DISKOMINFO') {
+            CLI::error("FAIL: Kadin user must be automatically bound to 'DISKOMINFO' OPD.");
+            return;
+        }
+        if (!$newKadin->inGroup('kepala_diskominfo')) {
+            CLI::error("FAIL: Kadin user should have group 'kepala_diskominfo'.");
+            return;
+        }
+
         CLI::write("\n==================================================", "yellow");
         CLI::write("  ALL INTEGRATION TESTS PASSED SUCCESSFULLY!       ", "yellow");
         CLI::write("==================================================", "yellow");
     }
 }
+

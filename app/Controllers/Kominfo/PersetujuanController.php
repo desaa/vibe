@@ -7,8 +7,6 @@ use App\Models\PengajuanOpdModel;
 use App\Models\PengajuanBidangModel;
 use App\Models\PengajuanBidangItemModel;
 use App\Models\HistoriPengajuanModel;
-use App\Models\UserProfileModel;
-
 class PersetujuanController extends BaseController
 {
     public function index()
@@ -19,9 +17,9 @@ class PersetujuanController extends BaseController
 
         $model = new PengajuanOpdModel();
         $konsolidasis = $model
-            ->select('pengajuan_opd.*, opd.nama_opd, user_profiles.nama_lengkap as pengirim')
+            ->select('pengajuan_opd.*, opd.nama_opd, users.nama_lengkap as pengirim')
             ->join('opd', 'opd.id = pengajuan_opd.opd_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_opd.created_by')
+            ->join('users', 'users.id = pengajuan_opd.created_by')
             ->orderBy('pengajuan_opd.updated_at', 'DESC')
             ->findAll();
 
@@ -38,9 +36,9 @@ class PersetujuanController extends BaseController
 
         $pengajuanOpdModel = new PengajuanOpdModel();
         $konsolidasi = $pengajuanOpdModel
-            ->select('pengajuan_opd.*, opd.nama_opd, user_profiles.nama_lengkap as pengirim')
+            ->select('pengajuan_opd.*, opd.nama_opd, users.nama_lengkap as pengirim')
             ->join('opd', 'opd.id = pengajuan_opd.opd_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_opd.created_by')
+            ->join('users', 'users.id = pengajuan_opd.created_by')
             ->where('pengajuan_opd.id', $id)
             ->first();
 
@@ -50,9 +48,9 @@ class PersetujuanController extends BaseController
 
         $bidangPengajuanModel = new PengajuanBidangModel();
         $submissions = $bidangPengajuanModel
-            ->select('pengajuan_bidang.*, bidang.nama_bidang, user_profiles.nama_lengkap as pengusul')
+            ->select('pengajuan_bidang.*, bidang.nama_bidang, users.nama_lengkap as pengusul')
             ->join('bidang', 'bidang.id = pengajuan_bidang.bidang_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_bidang.created_by')
+            ->join('users', 'users.id = pengajuan_bidang.created_by')
             ->where('pengajuan_bidang.pengajuan_opd_id', $id)
             ->findAll();
 
@@ -63,8 +61,8 @@ class PersetujuanController extends BaseController
 
         $historiModel = new HistoriPengajuanModel();
         $histories = $historiModel
-            ->select('histori_pengajuan.*, user_profiles.nama_lengkap')
-            ->join('user_profiles', 'user_profiles.user_id = histori_pengajuan.actor_id')
+            ->select('histori_pengajuan.*, users.nama_lengkap')
+            ->join('users', 'users.id = histori_pengajuan.actor_id')
             ->where('pengajuan_type', 'opd')
             ->where('reference_id', $id)
             ->orderBy('created_at', 'ASC')

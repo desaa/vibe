@@ -47,6 +47,12 @@ $routes->group('admin', ['filter' => 'session'], function($routes) {
     $routes->get('users', 'Admin\UserController::index');
     $routes->get('users/create', 'Admin\UserController::create');
     $routes->post('users/store', 'Admin\UserController::store');
+    $routes->get('register-kadin', 'Admin\UserController::showRegisterKadinForm');
+    $routes->post('register-kadin', 'Admin\UserController::processRegisterKadin');
 });
 
+$routes->get('register', '\App\Controllers\Auth\RegisterController::registerView');
+$routes->post('register', '\App\Controllers\Auth\RegisterController::registerAction');
+
 service('auth')->routes($routes);
+

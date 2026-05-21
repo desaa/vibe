@@ -13,7 +13,6 @@ class InitialSeeder extends Seeder
 
         // Clean tables
         $db->query('SET FOREIGN_KEY_CHECKS = 0;');
-        $db->table('user_profiles')->truncate();
         $db->table('bidang')->truncate();
         $db->table('opd')->truncate();
         $db->table('users')->truncate();
@@ -56,12 +55,14 @@ class InitialSeeder extends Seeder
             [
                 'opd_id'      => $diskominfoId,
                 'nama_bidang' => 'Bidang Aplikasi Informatika (Aptika)',
+                'kode_bidang' => 'APTIKA',
                 'created_at'  => date('Y-m-d H:i:s'),
                 'updated_at'  => date('Y-m-d H:i:s'),
             ],
             [
                 'opd_id'      => $diskominfoId,
                 'nama_bidang' => 'Bidang Informasi Komunikasi Publik (IKP)',
+                'kode_bidang' => 'IKP',
                 'created_at'  => date('Y-m-d H:i:s'),
                 'updated_at'  => date('Y-m-d H:i:s'),
             ],
@@ -69,12 +70,14 @@ class InitialSeeder extends Seeder
             [
                 'opd_id'      => $dinkesId,
                 'nama_bidang' => 'Bidang Pelayanan Kesehatan',
+                'kode_bidang' => 'YANKES',
                 'created_at'  => date('Y-m-d H:i:s'),
                 'updated_at'  => date('Y-m-d H:i:s'),
             ],
             [
                 'opd_id'      => $dinkesId,
                 'nama_bidang' => 'Bidang Kesehatan Masyarakat',
+                'kode_bidang' => 'KESMAS',
                 'created_at'  => date('Y-m-d H:i:s'),
                 'updated_at'  => date('Y-m-d H:i:s'),
             ],
@@ -82,12 +85,14 @@ class InitialSeeder extends Seeder
             [
                 'opd_id'      => $disdikId,
                 'nama_bidang' => 'Bidang Pembinaan SD',
+                'kode_bidang' => 'SD',
                 'created_at'  => date('Y-m-d H:i:s'),
                 'updated_at'  => date('Y-m-d H:i:s'),
             ],
             [
                 'opd_id'      => $disdikId,
                 'nama_bidang' => 'Bidang Pembinaan SMP',
+                'kode_bidang' => 'SMP',
                 'created_at'  => date('Y-m-d H:i:s'),
                 'updated_at'  => date('Y-m-d H:i:s'),
             ],
@@ -95,10 +100,7 @@ class InitialSeeder extends Seeder
 
         $db->table('bidang')->insertBatch($bidangData);
 
-        // Get Bidang ID Pelayanan Kesehatan DINKES
-        $bidangYankesId = $db->table('bidang')->where('nama_bidang', 'Bidang Pelayanan Kesehatan')->get()->getRow()->id;
-
-        // 3. Insert Users & Profiles
+        // 3. Insert Users directly to users table
         $usersProvider = auth()->getProvider();
 
         $usersToCreate = [
@@ -109,8 +111,8 @@ class InitialSeeder extends Seeder
                 'group'        => 'superadmin',
                 'nama_lengkap' => 'Super Administrator',
                 'nip'          => '199901012020121001',
-                'opd_id'       => null,
-                'bidang_id'    => null,
+                'kd_opd'       => null,
+                'kd_bidang'    => null,
             ],
             [
                 'username'     => 'kadin',
@@ -119,8 +121,8 @@ class InitialSeeder extends Seeder
                 'group'        => 'kepala_diskominfo',
                 'nama_lengkap' => 'Kepala Dinas Kominfo',
                 'nip'          => '198801012010121002',
-                'opd_id'       => $diskominfoId,
-                'bidang_id'    => null,
+                'kd_opd'       => 'DISKOMINFO',
+                'kd_bidang'    => null,
             ],
             [
                 'username'     => 'adminopd_dinkes',
@@ -129,8 +131,8 @@ class InitialSeeder extends Seeder
                 'group'        => 'admin_opd',
                 'nama_lengkap' => 'Admin OPD Dinas Kesehatan',
                 'nip'          => '199001012015121003',
-                'opd_id'       => $dinkesId,
-                'bidang_id'    => null,
+                'kd_opd'       => 'DINKES',
+                'kd_bidang'    => null,
             ],
             [
                 'username'     => 'adminbidang_yankes',
@@ -139,8 +141,8 @@ class InitialSeeder extends Seeder
                 'group'        => 'admin_bidang',
                 'nama_lengkap' => 'Admin Bidang Yankes DINKES',
                 'nip'          => '199501012018121004',
-                'opd_id'       => $dinkesId,
-                'bidang_id'    => $bidangYankesId,
+                'kd_opd'       => 'DINKES',
+                'kd_bidang'    => 'YANKES',
             ]
         ];
 
@@ -153,9 +155,14 @@ class InitialSeeder extends Seeder
             }
 
             $userEntity = new User([
-                'username' => $u['username'],
-                'email'    => $u['email'],
-                'password' => $u['password'],
+                'username'     => $u['username'],
+                'email'        => $u['email'],
+                'password'     => $u['password'],
+                'nama_lengkap' => $u['nama_lengkap'],
+                'nip'          => $u['nip'],
+                'kd_opd'       => $u['kd_opd'],
+                'kd_bidang'    => $u['kd_bidang'],
+                'active'       => 1, // Seeded users are active by default
             ]);
 
             $usersProvider->save($userEntity);
@@ -164,17 +171,6 @@ class InitialSeeder extends Seeder
             // Find user again and add group
             $user = $usersProvider->findById($userId);
             $user->addGroup($u['group']);
-
-            // Insert into user_profiles
-            $db->table('user_profiles')->insert([
-                'user_id'      => $userId,
-                'nama_lengkap' => $u['nama_lengkap'],
-                'nip'          => $u['nip'],
-                'opd_id'       => $u['opd_id'],
-                'bidang_id'    => $u['bidang_id'],
-                'created_at'   => date('Y-m-d H:i:s'),
-                'updated_at'   => date('Y-m-d H:i:s'),
-            ]);
         }
     }
 }

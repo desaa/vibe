@@ -6,15 +6,8 @@ use App\Controllers\BaseController;
 use App\Models\PengajuanBidangModel;
 use App\Models\PengajuanBidangItemModel;
 use App\Models\HistoriPengajuanModel;
-use App\Models\UserProfileModel;
-
 class VerifikasiController extends BaseController
 {
-    private function getProfile()
-    {
-        $profileModel = new UserProfileModel();
-        return $profileModel->where('user_id', auth()->id())->first();
-    }
 
     public function index()
     {
@@ -26,9 +19,9 @@ class VerifikasiController extends BaseController
         $model = new PengajuanBidangModel();
         // Get all DIAJUKAN, DISETUJUI_OPD, DITOLAK_OPD, DIKEMBALIKAN_OPD
         $pengajuans = $model
-            ->select('pengajuan_bidang.*, bidang.nama_bidang, user_profiles.nama_lengkap as pengusul')
+            ->select('pengajuan_bidang.*, bidang.nama_bidang, users.nama_lengkap as pengusul')
             ->join('bidang', 'bidang.id = pengajuan_bidang.bidang_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_bidang.created_by')
+            ->join('users', 'users.id = pengajuan_bidang.created_by')
             ->where('pengajuan_bidang.opd_id', $profile['opd_id'])
             ->whereIn('pengajuan_bidang.status', ['DIAJUKAN', 'DISETUJUI_OPD', 'DITOLAK_OPD', 'DIKEMBALIKAN_OPD', 'DIPROSES_KOMINFO'])
             ->orderBy('pengajuan_bidang.updated_at', 'DESC')
@@ -44,9 +37,9 @@ class VerifikasiController extends BaseController
         $profile = $this->getProfile();
         $pengajuanModel = new PengajuanBidangModel();
         $pengajuan = $pengajuanModel
-            ->select('pengajuan_bidang.*, bidang.nama_bidang, user_profiles.nama_lengkap as pengusul')
+            ->select('pengajuan_bidang.*, bidang.nama_bidang, users.nama_lengkap as pengusul')
             ->join('bidang', 'bidang.id = pengajuan_bidang.bidang_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_bidang.created_by')
+            ->join('users', 'users.id = pengajuan_bidang.created_by')
             ->where('pengajuan_bidang.id', $id)
             ->where('pengajuan_bidang.opd_id', $profile['opd_id'])
             ->first();
@@ -60,8 +53,8 @@ class VerifikasiController extends BaseController
 
         $historiModel = new HistoriPengajuanModel();
         $histories = $historiModel
-            ->select('histori_pengajuan.*, user_profiles.nama_lengkap')
-            ->join('user_profiles', 'user_profiles.user_id = histori_pengajuan.actor_id')
+            ->select('histori_pengajuan.*, users.nama_lengkap')
+            ->join('users', 'users.id = histori_pengajuan.actor_id')
             ->where('pengajuan_type', 'bidang')
             ->where('reference_id', $id)
             ->orderBy('created_at', 'ASC')
