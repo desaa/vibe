@@ -61,6 +61,18 @@ class AuthGroups extends ShieldAuthGroups
             'title'       => 'Beta User',
             'description' => 'Has access to beta-level features.',
         ],
+        'kepala_diskominfo' => [
+            'title'       => 'Kepala DISKOMINFO',
+            'description' => 'Reviewer akhir pengajuan OPD dan penandatangan rekomendasi.',
+        ],
+        'admin_opd' => [
+            'title'       => 'Admin OPD',
+            'description' => 'Reviewer pengajuan bidang, pengonsolidasi usulan, dan pencetak rekomendasi.',
+        ],
+        'admin_bidang' => [
+            'title'       => 'Admin Bidang / UPTD',
+            'description' => 'Pembuat usulan pengadaan aset TIK.',
+        ],
     ];
 
     /**
