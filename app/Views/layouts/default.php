@@ -53,13 +53,26 @@
     <?php 
     $user = auth()->user(); 
     $db = \Config\Database::connect();
-    $profile = $db->table('user_profiles')
-        ->select('user_profiles.*, opd.nama_opd, bidang.nama_bidang')
-        ->join('opd', 'opd.id = user_profiles.opd_id', 'left')
-        ->join('bidang', 'bidang.id = user_profiles.bidang_id', 'left')
-        ->where('user_id', $user->id)
-        ->get()
-        ->getRowArray();
+    
+    $profile = [
+        'nama_lengkap' => $user->nama_lengkap ?? '',
+        'nama_opd'     => null,
+        'nama_bidang'  => null,
+    ];
+    
+    if (!empty($user->kd_opd)) {
+        $opd = $db->table('opd')->where('kode_opd', $user->kd_opd)->get()->getRowArray();
+        if ($opd) {
+            $profile['nama_opd'] = $opd['nama_opd'];
+        }
+    }
+    
+    if (!empty($user->kd_bidang)) {
+        $bidang = $db->table('bidang')->where('kode_bidang', $user->kd_bidang)->get()->getRowArray();
+        if ($bidang) {
+            $profile['nama_bidang'] = $bidang['nama_bidang'];
+        }
+    }
 
     $roleName = 'User';
     $roleClass = 'bg-gray-100 text-gray-700';

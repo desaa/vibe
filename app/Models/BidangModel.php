@@ -12,7 +12,7 @@ class BidangModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['opd_id', 'nama_bidang'];
+    protected $allowedFields    = ['opd_id', 'nama_bidang', 'kode_bidang'];
 
     // Dates
     protected $useTimestamps = true;

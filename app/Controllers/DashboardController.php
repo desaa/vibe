@@ -12,13 +12,7 @@ class DashboardController extends BaseController
         $user = auth()->user();
         
         // Fetch user profile
-        $profileModel = new \App\Models\UserProfileModel();
-        $profile = $profileModel
-            ->select('user_profiles.*, opd.nama_opd, opd.kode_opd, bidang.nama_bidang')
-            ->join('opd', 'opd.id = user_profiles.opd_id', 'left')
-            ->join('bidang', 'bidang.id = user_profiles.bidang_id', 'left')
-            ->where('user_id', $user->id)
-            ->first();
+        $profile = $this->getProfile();
 
         // Establish Role
         $role = 'user';

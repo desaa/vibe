@@ -7,15 +7,8 @@ use App\Models\PengajuanOpdModel;
 use App\Models\PengajuanBidangModel;
 use App\Models\PengajuanBidangItemModel;
 use App\Models\HistoriPengajuanModel;
-use App\Models\UserProfileModel;
-
 class KonsolidasiController extends BaseController
 {
-    private function getProfile()
-    {
-        $profileModel = new UserProfileModel();
-        return $profileModel->where('user_id', auth()->id())->first();
-    }
 
     public function index()
     {
@@ -45,9 +38,9 @@ class KonsolidasiController extends BaseController
         $bidangPengajuanModel = new PengajuanBidangModel();
         // Fetch all DISETUJUI_OPD that are NOT yet part of any consolidation
         $approvedSubmissions = $bidangPengajuanModel
-            ->select('pengajuan_bidang.*, bidang.nama_bidang, user_profiles.nama_lengkap as pengusul')
+            ->select('pengajuan_bidang.*, bidang.nama_bidang, users.nama_lengkap as pengusul')
             ->join('bidang', 'bidang.id = pengajuan_bidang.bidang_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_bidang.created_by')
+            ->join('users', 'users.id = pengajuan_bidang.created_by')
             ->where('pengajuan_bidang.opd_id', $profile['opd_id'])
             ->where('pengajuan_bidang.status', 'DISETUJUI_OPD')
             ->where('pengajuan_bidang.pengajuan_opd_id', null)
@@ -135,9 +128,9 @@ class KonsolidasiController extends BaseController
         $profile = $this->getProfile();
         $pengajuanOpdModel = new PengajuanOpdModel();
         $konsolidasi = $pengajuanOpdModel
-            ->select('pengajuan_opd.*, opd.nama_opd, user_profiles.nama_lengkap as pengirim')
+            ->select('pengajuan_opd.*, opd.nama_opd, users.nama_lengkap as pengirim')
             ->join('opd', 'opd.id = pengajuan_opd.opd_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_opd.created_by')
+            ->join('users', 'users.id = pengajuan_opd.created_by')
             ->where('pengajuan_opd.id', $id)
             ->where('pengajuan_opd.opd_id', $profile['opd_id'])
             ->first();
@@ -149,9 +142,9 @@ class KonsolidasiController extends BaseController
         // Get all Bidang Submissions in this Consolidation
         $bidangPengajuanModel = new PengajuanBidangModel();
         $submissions = $bidangPengajuanModel
-            ->select('pengajuan_bidang.*, bidang.nama_bidang, user_profiles.nama_lengkap as pengusul')
+            ->select('pengajuan_bidang.*, bidang.nama_bidang, users.nama_lengkap as pengusul')
             ->join('bidang', 'bidang.id = pengajuan_bidang.bidang_id')
-            ->join('user_profiles', 'user_profiles.user_id = pengajuan_bidang.created_by')
+            ->join('users', 'users.id = pengajuan_bidang.created_by')
             ->where('pengajuan_bidang.pengajuan_opd_id', $id)
             ->findAll();
 
@@ -164,8 +157,8 @@ class KonsolidasiController extends BaseController
         // Logs for this Consolidation
         $historiModel = new HistoriPengajuanModel();
         $histories = $historiModel
-            ->select('histori_pengajuan.*, user_profiles.nama_lengkap')
-            ->join('user_profiles', 'user_profiles.user_id = histori_pengajuan.actor_id')
+            ->select('histori_pengajuan.*, users.nama_lengkap')
+            ->join('users', 'users.id = histori_pengajuan.actor_id')
             ->where('pengajuan_type', 'opd')
             ->where('reference_id', $id)
             ->orderBy('created_at', 'ASC')
@@ -185,7 +178,7 @@ class KonsolidasiController extends BaseController
         $konsolidasi = $pengajuanOpdModel
             ->select('pengajuan_opd.*, opd.nama_opd, approved_profile.nama_lengkap as kadin_nama, approved_profile.nip as kadin_nip')
             ->join('opd', 'opd.id = pengajuan_opd.opd_id')
-            ->join('user_profiles as approved_profile', 'approved_profile.user_id = pengajuan_opd.approved_by', 'left')
+            ->join('users as approved_profile', 'approved_profile.id = pengajuan_opd.approved_by', 'left')
             ->where('pengajuan_opd.id', $id)
             ->where('pengajuan_opd.opd_id', $profile['opd_id'])
             ->where('pengajuan_opd.status', 'DISETUJUI')

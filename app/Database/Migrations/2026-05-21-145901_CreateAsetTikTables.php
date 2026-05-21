@@ -54,6 +54,11 @@ class CreateAsetTikTables extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => '255',
             ],
+            'kode_bidang' => [
+                'type'       => 'VARCHAR',
+                'constraint' => '50',
+                'unique'     => true,
+            ],
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
@@ -67,55 +72,38 @@ class CreateAsetTikTables extends Migration
         $this->forge->addForeignKey('opd_id', 'opd', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('bidang');
 
-        // 3. User Profiles
-        $this->forge->addField([
-            'id' => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
-            ],
-            'user_id' => [
-                'type'       => 'INT',
-                'constraint' => 11,
-                'unsigned'   => true,
-                'unique'     => true,
-            ],
+        // 3. Add OPD fields directly to users table
+        $fields = [
             'nama_lengkap' => [
                 'type'       => 'VARCHAR',
-                'constraint' => '255',
+                'constraint' => 255,
+                'null'       => true,
+                'after'      => 'username'
             ],
             'nip' => [
                 'type'       => 'VARCHAR',
-                'constraint' => '50',
+                'constraint' => 50,
                 'null'       => true,
+                'after'      => 'nama_lengkap'
             ],
-            'opd_id' => [
-                'type'       => 'INT',
-                'constraint' => 11,
-                'unsigned'   => true,
+            'kd_opd' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 50,
                 'null'       => true,
+                'after'      => 'nip'
             ],
-            'bidang_id' => [
-                'type'       => 'INT',
-                'constraint' => 11,
-                'unsigned'   => true,
+            'kd_bidang' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 50,
                 'null'       => true,
+                'after'      => 'kd_opd'
             ],
-            'created_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-            'updated_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-        ]);
-        $this->forge->addKey('id', true);
-        $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('opd_id', 'opd', 'id', 'SET NULL', 'CASCADE');
-        $this->forge->addForeignKey('bidang_id', 'bidang', 'id', 'SET NULL', 'CASCADE');
-        $this->forge->createTable('user_profiles');
+        ];
+        $this->forge->addColumn('users', $fields);
+
+        // Add foreign keys directly
+        $this->db->query('ALTER TABLE users ADD CONSTRAINT users_kd_opd_fk FOREIGN KEY (kd_opd) REFERENCES opd(kode_opd) ON DELETE SET NULL ON UPDATE CASCADE');
+        $this->db->query('ALTER TABLE users ADD CONSTRAINT users_kd_bidang_fk FOREIGN KEY (kd_bidang) REFERENCES bidang(kode_bidang) ON DELETE SET NULL ON UPDATE CASCADE');
 
         // 4. Pengajuan OPD
         $this->forge->addField([
@@ -345,8 +333,27 @@ class CreateAsetTikTables extends Migration
         $this->forge->dropTable('pengajuan_bidang_item', true);
         $this->forge->dropTable('pengajuan_bidang', true);
         $this->forge->dropTable('pengajuan_opd', true);
-        $this->forge->dropTable('user_profiles', true);
+        
+        // Drop foreign keys and columns on users table
+        try {
+            $this->db->query('ALTER TABLE users DROP FOREIGN KEY users_kd_opd_fk');
+        } catch (\Exception $e) {}
+        try {
+            $this->db->query('ALTER TABLE users DROP FOREIGN KEY users_kd_bidang_fk');
+        } catch (\Exception $e) {}
+        
+        $fieldsToDrop = [];
+        foreach (['nama_lengkap', 'nip', 'kd_opd', 'kd_bidang'] as $col) {
+            if ($this->db->fieldExists($col, 'users')) {
+                $fieldsToDrop[] = $col;
+            }
+        }
+        if (!empty($fieldsToDrop)) {
+            $this->forge->dropColumn('users', $fieldsToDrop);
+        }
+        
         $this->forge->dropTable('bidang', true);
         $this->forge->dropTable('opd', true);
     }
 }
+
